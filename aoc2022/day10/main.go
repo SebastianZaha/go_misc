@@ -10,51 +10,49 @@ import (
 func main() {
 	f, _ := os.ReadFile("input.txt")
 	var (
-		cycles int64
-		reg    int64 = 1
-		screen       = ""
+		reg    int = 1
+		screen     = ""
 	)
 
-	for _, l := range strings.Split(string(f), "\n") {
-		if len(l) == 0 {
-			continue
+	lines := strings.Split(string(f), "\n")
+	clk := 0
+	lineIdx := 0
+	incompleteInstruction := false
+	screenLines := 0
+
+	for {
+		screenPos := clk % 40 // 0 to 39
+
+		if screenPos == 0 {
+			screen += "\n"
+			screenLines++
+			if screenLines == 7 {
+				break
+			}
 		}
-		if l == "noop" {
-			cycles += 1
 
-			check := (cycles - 1) % 40
-			if check == 0 {
-				screen += "\n"
-			}
-
-			if reg-1 == check || reg == check || reg+1 == check {
-				screen += "#"
-			} else {
-				screen += "."
-			}
+		if reg-1 == screenPos || reg == screenPos || reg+1 == screenPos {
+			screen += "#"
 		} else {
-			num, _ := strconv.ParseInt(l[5:], 10, 64)
-			reg += num
-			cycles += 2
-			check := (cycles - 2) % 40
-			check1 := (cycles - 1) % 40
-			if check1 == 0 {
-				screen += "\n"
-			}
-			if reg-num-1 == check || reg-num == check || reg-num+1 == check {
-				screen += "#"
+			screen += "."
+		}
+
+		// finish executing the "add" started on previous tick
+		if incompleteInstruction {
+			num, _ := strconv.ParseInt(lines[lineIdx][5:], 10, 64)
+			reg += int(num)
+			lineIdx++
+			incompleteInstruction = false
+		} else {
+			// read new instruction
+			if lines[lineIdx] == "noop" || len(lines[lineIdx]) == 0 {
+				lineIdx++
 			} else {
-				screen += "."
-			}
-			if check1 == 0 {
-				screen += "\n"
-			}
-			if reg-num-1 == check1 || reg-num == check1 || reg-num+1 == check1 {
-				screen += "#"
-			} else {
-				screen += "."
+				incompleteInstruction = true
 			}
 		}
+
+		clk += 1
 	}
 	fmt.Println(screen)
 }
