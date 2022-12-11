@@ -127,25 +127,16 @@ func main() {
 	zero := big.NewInt(0)
 	mod := big.NewInt(0)
 
-	for i := 0; i < 19; i++ {
+	for i := 0; i < 20; i++ {
 
 		for j := 0; j < len(monkeys); j++ {
 			m := &monkeys[j]
 			for _, item := range m.items {
 				m.insp += 1
-				newLvl := m.op(item)
-				//if newLvl < 0 {
-				//fmt.Println("overflow")
-				//newLvl = math.Maxbig.Int
-				// newLvl = m.items[k]
-				// fmt.Printf("%d %d %+v\n", newLvl, m.items[k], m)
-				// return
-				//newLvl = m.items[k]
-				//fmt.Println("overflow")
-				//newLvl = -newLvl
-				//}
+				op := m.op(item)
+				newLvl := op.Div(op, big.NewInt(3))
 				dest := m.t2
-				mod.Div(newLvl, big.NewInt(m.tdiv))
+				mod.Mod(newLvl, big.NewInt(m.tdiv))
 				if mod.Cmp(zero) == 0 {
 					dest = m.t1
 				}
