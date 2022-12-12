@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -79,7 +80,7 @@ func distFromStartingPoint(si, sj int) int {
 }
 
 func main() {
-
+	t := time.Now()
 	/*f := `Sabqponm
 	abcryxxl
 	accszExk
@@ -115,7 +116,7 @@ func main() {
 	}
 
 	fmt.Printf("Read matrix height %d, width %d, start at %d:%d end at %d:%d\n", h, w, ei, ej)
-	printM(elev)
+	// printM(elev)
 	fmt.Println("")
 
 	min := 9999
@@ -127,5 +128,5 @@ func main() {
 		// printM(visited)
 	}
 
-	fmt.Printf("Day12 min lenght: %d\n", min)
+	fmt.Printf("Day12 min lenght %d (total time %v)\n", min, time.Since(t))
 }
