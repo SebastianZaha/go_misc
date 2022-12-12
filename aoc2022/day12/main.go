@@ -10,10 +10,10 @@ import (
 var (
 	h       int
 	w       int
-	si, sj  int
 	ei, ej  int
 	visited [][]int
 	elev    [][]int
+	stack   [][]int
 )
 
 func printM(m [][]int) {
@@ -25,59 +25,66 @@ func printM(m [][]int) {
 	}
 }
 
-func tryGo(fromI, fromJ, toI, toJ, steps int) bool {
+func tryGo(fromI, fromJ, toI, toJ, steps int) {
 	// perimeter
 	if toI < 0 || toJ < 0 || toI >= h || toJ >= w {
-		return false
+		return
 	}
 	// already been here, with lower cost
-	if visited[toI][toJ] > 0 && visited[toI][toJ] < visited[fromI][fromJ] {
-		return false
+	if visited[toI][toJ] > 0 && visited[toI][toJ] <= steps {
+		return
 	}
 	// elev too high
 	if elev[toI][toJ] > elev[fromI][fromJ]+1 {
 		//fmt.Printf("elev too high %s %s\n", elev[toI][toJ], elev[fromI][fromJ])
-		return false
+		return
 	}
 
-	visit(toI, toJ, steps)
-
-	return true
+	visited[toI][toJ] = steps
+	stack = append(stack, []int{toI, toJ, steps})
 }
 
-var totalVisits = 0
-var foundDestination = false
-
-func visit(i int, j int, steps int) {
-	totalVisits++
-	if totalVisits > 10000000 {
-		fmt.Println("total visits exceeded")
-		return
-	}
-	if foundDestination {
-		return
+func distFromStartingPoint(si, sj int) int {
+	visited = make([][]int, h)
+	for i := range visited {
+		visited[i] = make([]int, w)
 	}
 
-	visited[i][j] = steps
+	stack = [][]int{[]int{si, sj, 1}}
+	visited[si][sj] = 1
 
-	if i == ei && j == ej {
-		foundDestination = true
-		return
+	i := 0
+	for {
+		i++
+		if i > 300000 {
+			fmt.Printf("infinite loop: %d cycles\n", i)
+			break
+		}
+		if len(stack) == 0 {
+			break
+		}
+		pos := stack[0]
+		stack = stack[1:]
+		tryGo(pos[0], pos[1], pos[0], pos[1]+1, pos[2]+1) // right
+		tryGo(pos[0], pos[1], pos[0]+1, pos[1], pos[2]+1) // down
+		tryGo(pos[0], pos[1], pos[0], pos[1]-1, pos[2]+1) // up
+		tryGo(pos[0], pos[1], pos[0]-1, pos[1], pos[2]+1) // left
 	}
 
-	tryGo(i, j, i, j+1, steps+1) // right
-	tryGo(i, j, i+1, j, steps+1) // down
-	tryGo(i, j, i, j-1, steps+1) // up
-	tryGo(i, j, i-1, j, steps+1) // left
+	// fmt.Printf("checked for %d cycles, found distance %d\n", i, visited[ei][ej])
+
+	// -1 as we started with step 1 on the start position
+	// (to distinguish from all the 0s that are default)
+	return visited[ei][ej] - 1
 }
 
 func main() {
 
-	/*	f := `Sabqponm
-		abcryxxl
-		accszExk
-		acctuvwj
-		abdefghi`*/
+	/*f := `Sabqponm
+	abcryxxl
+	accszExk
+	acctuvwj
+	abdefghi`*/
 	f, _ := os.ReadFile("input.txt")
 	f = bytes.TrimSpace(f)
 	lines := strings.Split(string(f), "\n")
@@ -85,21 +92,18 @@ func main() {
 	h = len(lines)
 	w = len(lines[0])
 
-	visited = make([][]int, h)
-	for i := range visited {
-		visited[i] = make([]int, w)
-	}
 	elev = make([][]int, h)
 	for i := range elev {
 		elev[i] = make([]int, w)
 	}
 
+	var possibleStarts [][]int = [][]int{}
+
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
-			if lines[i][j] == 'S' {
-				si = i
-				sj = j
+			if lines[i][j] == 'S' || lines[i][j] == 'a' {
 				elev[i][j] = 0
+				possibleStarts = append(possibleStarts, []int{i, j})
 			} else if lines[i][j] == 'E' {
 				ei = i
 				ej = j
@@ -110,13 +114,18 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Read matrix height %d, width %d, start at %d:%d end at %d:%d\n",
-		h, w, si, sj, ei, ej)
+	fmt.Printf("Read matrix height %d, width %d, start at %d:%d end at %d:%d\n", h, w, ei, ej)
 	printM(elev)
 	fmt.Println("")
 
-	visit(si, sj, 0)
+	min := 9999
+	for _, pos := range possibleStarts {
+		d := distFromStartingPoint(pos[0], pos[1])
+		if d < min && d > 0 {
+			min = d
+		}
+		// printM(visited)
+	}
 
-	printM(visited)
-	fmt.Printf("Day12 lenght: %d\n", visited[ei][ej])
+	fmt.Printf("Day12 min lenght: %d\n", min)
 }
