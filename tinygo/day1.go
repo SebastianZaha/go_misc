@@ -1,3 +1,5 @@
+//go:build avr
+
 package main
 
 import (
@@ -41,20 +43,12 @@ func main() {
 		if n == 0 {
 			continue
 		}
-		/*
-			driverutils.SerialPacket()
-			print("read bytes: ", n)
-			driverutils.SerialPacket()
-			print(string(buf[:n]))
-			driverutils.SerialPacket()
-		*/
+
 		for i := 0; i < n; i++ {
 			if buf[i] == utils.AsciiEOT {
 				lcd.SetCursor(14, 1)
 				lcd.Print(txtDone)
-				driverutils.SerialPacket()
-				print("done")
-				driverutils.SerialPacket()
+				print(utils.AsciiUS, "done", utils.AsciiUS)
 				return
 			} else if buf[i] >= utils.Ascii0 && buf[i] <= utils.Ascii9 {
 				if prevDigit == 0 {
@@ -68,27 +62,19 @@ func main() {
 				if prevDigit != 0 {
 					add(prevDigit - 48)
 					prevDigit = 0
-				} // else a newline without a line (or a LF after CR)
+				} // line with no digits on it
 			} else {
-				// utils.SerialDbg("read irrelevant char", buf[i])
+				// irelevant char
 			}
 		}
 
 		if readFromCurrFrame+n < utils.SerialPacketSize {
 			readFromCurrFrame += n
-			driverutils.SerialPacket()
-			print("rfcf ", n, " ", readFromCurrFrame)
-			driverutils.SerialPacket()
 		} else if readFromCurrFrame+n == utils.SerialPacketSize {
 			driverutils.SerialAck()
-			driverutils.SerialPacket()
-			print("ack. rfcf=0")
-			driverutils.SerialPacket()
 			readFromCurrFrame = 0
 		} else {
-			driverutils.SerialPacket()
-			print("tx error. in packet: ", readFromCurrFrame+n)
-			driverutils.SerialPacket()
+			print(utils.AsciiUS, "tx error. in packet: ", readFromCurrFrame+n, utils.AsciiUS)
 			return
 		}
 	}

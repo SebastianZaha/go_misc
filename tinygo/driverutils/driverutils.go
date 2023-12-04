@@ -1,3 +1,5 @@
+//go:build avr
+
 package driverutils
 
 import (
@@ -27,8 +29,4 @@ func InitLCD() (lcd hd44780i2c.Device, err error) {
 
 func SerialAck() {
 	utils.Must(machine.Serial.WriteByte(utils.AsciiACK))
-}
-
-func SerialPacket() {
-	utils.Must(machine.Serial.WriteByte(utils.AsciiUS))
 }

@@ -1,3 +1,5 @@
+//go:build avr
+
 package main
 
 import (
