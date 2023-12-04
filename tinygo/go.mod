@@ -1,4 +1,4 @@
-module arduino
+module github.com/SebastianZaha/go_misc/tinygo
 
 go 1.21.4
 
