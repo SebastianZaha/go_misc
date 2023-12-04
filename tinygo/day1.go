@@ -12,8 +12,8 @@ var (
 	sumTerms uint32
 	lcd      hd44780i2c.Device
 
-	buf    = make([]byte, 16)
-	intBuf = make([]byte, 6)
+	buf    = make([]byte, 128) // utils.SerialPacketSize
+	intBuf = make([]byte, 8)
 
 	txtSum   = []byte("Sum: ")
 	txtTerms = []byte("of:  ")
@@ -41,13 +41,13 @@ func main() {
 		if n == 0 {
 			continue
 		}
-
-		driverutils.SerialPacket()
-		print("read bytes: ", n)
-		driverutils.SerialPacket()
-		print(string(buf[:n]))
-		driverutils.SerialPacket()
-
+		/*
+			driverutils.SerialPacket()
+			print("read bytes: ", n)
+			driverutils.SerialPacket()
+			print(string(buf[:n]))
+			driverutils.SerialPacket()
+		*/
 		for i := 0; i < n; i++ {
 			if buf[i] == utils.AsciiEOT {
 				lcd.SetCursor(14, 1)
@@ -64,7 +64,7 @@ func main() {
 					prevDigit = uint32(buf[i])
 				}
 				//utils.SerialDbg("digit: ", prevDigit-48, "; curr sum: ", sum)
-			} else if buf[i] == utils.AsciiCR || buf[i] == utils.AsciiLF {
+			} else if buf[i] == utils.AsciiUS {
 				if prevDigit != 0 {
 					add(prevDigit - 48)
 					prevDigit = 0

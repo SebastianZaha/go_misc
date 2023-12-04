@@ -44,4 +44,4 @@ func Must(err error) {
 	}
 }
 
-const SerialPacketSize = 16
+const SerialPacketSize = 128
