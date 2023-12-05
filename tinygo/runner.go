@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"github.com/SebastianZaha/go_misc/tinygo/utils"
 	"github.com/mattn/go-tty"
-	"io"
 	"log"
 	"os"
 	"os/exec"
-	"strings"
+	"time"
 )
 
 var (
@@ -23,6 +22,7 @@ var (
 )
 
 func run() {
+	start := time.Now()
 	serial, err = tty.OpenDevice("/dev/ttyACM0")
 	if err != nil {
 		fmt.Printf("Cannot open device: %+v", err)
@@ -37,6 +37,9 @@ func run() {
 		}
 		if len(token) == 1 && token[len(token)-1] == utils.AsciiACK {
 			writeInputPacket()
+		} else if len(token) == 1 && token[len(token)-1] == utils.AsciiEOT {
+			fmt.Printf("Finished in %.2fs\n", time.Since(start).Seconds())
+			os.Exit(0)
 		} else {
 			fmt.Printf("serial: %q\n", token)
 		}
@@ -57,8 +60,8 @@ func writeInputPacket() {
 			fmt.Printf("Read %d from file, only wrote %d to serial", len(packet), nwritten)
 			os.Exit(1)
 		}
-		fmt.Printf("Wrote from file to serial %d bytes\n%q\n\n", nwritten, packet)
-		println()
+		// fmt.Printf("Wrote from file to serial %d bytes\n", nwritten)
+		// fmt.Printf("\t%q\n\n", packet)
 		return
 	}
 	if err = inputFileScanner.Err(); err != nil {
@@ -121,8 +124,8 @@ func initFileScanner(f *os.File) *bufio.Scanner {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Print(`Usage: 
-	go run runner.go flash day1.go day1_1_ex.txt - will flash & run day1.go with provided test
-	go run runner.go run day1.go day1_1_ex.txt - will feed day1_1.txt and monitor output 
+	go run runner.go flash day1_1/main.go day1_1/ex.txt - will flash & run with provided test
+	go run runner.go run day1_1/main.go day1_1/ex.txt - will feed text file and monitor output 
 `)
 		return
 	}
@@ -139,7 +142,7 @@ func main() {
 			"flash",
 			"-target=arduino",
 			"-baudrate=9600",
-			//"-gc=none",
+			"-gc=none",
 			goFile,
 		}
 		log.Printf("Running:\n\ttinygo %s\n", args)
@@ -152,68 +155,4 @@ func main() {
 	}
 
 	run()
-}
-
-// Testing using -monitor directly in the flash command, then redirecting stdio to it from our
-// text test file. Does not seem to work because the tinygo programs interacts with the tty
-// and ignores our stdio redirect somehow.
-func testFlashAndMonitor() {
-	cmd := exec.Command("tinygo", "flash", "-monitor", "-target=arduino", "-baudrate=9600", os.Args[1])
-
-	outR, outW := io.Pipe()
-	inPipe, err := cmd.StdinPipe()
-	if err != nil {
-		panic(err)
-	}
-	cmd.Stdout = io.MultiWriter(os.Stdout, outW)
-	cmd.Stderr = os.Stderr
-
-	guard := "Reading until Ctrl-D"
-
-	go func() {
-		bufr := bufio.NewReader(outR)
-		for {
-			str, err := bufr.ReadString('\n')
-			if err != nil {
-				panic(err)
-			}
-			// stringCmpDebug(str, guard)
-			str = strings.TrimSpace(str)
-			if str == guard {
-				f, err := os.Open(os.Args[2])
-				if err != nil {
-					panic(err)
-				}
-				n, err := io.Copy(inPipe, f)
-				if err != nil {
-					panic(err)
-				}
-				log.Printf("Copied %d bytes from %s.txt to program\n", n, os.Args[2])
-			}
-		}
-	}()
-
-	if err = cmd.Start(); err != nil {
-		panic(err)
-	}
-	if err = cmd.Wait(); err != nil {
-		panic(err)
-	}
-}
-
-func stringCmpDebug(str1, str2 string) {
-	fmt.Print("Comparing strings: ")
-	if len(str1) != len(str2) {
-		fmt.Printf("lengths differ: %d vs %d\n", len(str1), len(str2))
-		fmt.Printf("\t%v\n", []byte(str1))
-		fmt.Printf("\t%v\n", []byte(str2))
-		return
-	}
-	for i := 0; i < len(str1); i++ {
-		if str1[i] != str2[i] {
-			fmt.Printf("char %c at index %d differs from str2: %c\n", str1[i], i, str2[i])
-			return
-		}
-	}
-	fmt.Printf(" equal\n")
 }

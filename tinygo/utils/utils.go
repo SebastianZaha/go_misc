@@ -36,12 +36,6 @@ func FormatUint32(num uint32, slice []byte) {
 	}
 }
 
-func Zero(slice []byte) {
-	for i := 0; i < len(slice); i++ {
-		slice[i] = 0
-	}
-}
-
 func Must(err error) {
 	if err != nil {
 		panic(err)
@@ -55,17 +49,20 @@ func InitSerialScanner(r io.Reader) *bufio.Scanner {
 	s := bufio.NewScanner(r)
 	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		for i := 0; i < len(data); i++ {
-			if data[i] == AsciiACK {
+			if data[i] == AsciiACK || data[i] == AsciiEOT {
 				if i > 0 {
+					// return token before the separator
 					return i, data[:i], nil
 				} else {
+					// then return this separator as token
 					return i + 1, data[0:1], nil
 				}
 			} else if data[i] == AsciiUS {
 				if i > 0 {
+					// return token before the separator
 					return i + 1, data[:i], nil
 				} else {
-					// when first in buffer, simply skip
+					// completely skip the separator itself
 					return i + 1, nil, nil
 				}
 			}
@@ -87,3 +84,22 @@ func InitSerialScanner(r io.Reader) *bufio.Scanner {
 	s.Split(split)
 	return s
 }
+
+/*
+func stringCmpDebug(str1, str2 string) {
+	fmt.Print("Comparing strings: ")
+	if len(str1) != len(str2) {
+		fmt.Printf("lengths differ: %d vs %d\n", len(str1), len(str2))
+		fmt.Printf("\t%v\n", []byte(str1))
+		fmt.Printf("\t%v\n", []byte(str2))
+		return
+	}
+	for i := 0; i < len(str1); i++ {
+		if str1[i] != str2[i] {
+			fmt.Printf("char %c at index %d differs from str2: %c\n", str1[i], i, str2[i])
+			return
+		}
+	}
+	fmt.Printf(" equal\n")
+}
+*/
