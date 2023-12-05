@@ -79,9 +79,11 @@ func writeInputPacket() {
 	fmt.Println("Wrote EOT to output")
 }
 
-// read the input file, split into utils.SerialPacketSize pieces
-// CR and LF are squished into a single utils.AsciiUS because
-// tty protocols mess up the CR/LF processing
+// Read the input file, split into utils.SerialPacketSize pieces
+//
+// CR and LF are squished and replaced by a single utils.AsciiUS because
+// tty protocols mess with the CR/LF processing, seemingly adding or removing them
+// in ways I do not understand.
 func initFileScanner(f *os.File) *bufio.Scanner {
 	scanner := bufio.NewScanner(f)
 	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -125,25 +127,20 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Print(`Usage: 
 	go run runner.go flash day1_1/main.go day1_1/ex.txt - will flash & run with provided test
-	go run runner.go run day1_1/main.go day1_1/ex.txt - will feed text file and monitor output 
+	go run runner.go run day1_1/ex.txt - will only feed text file and monitor output 
 `)
 		return
 	}
-	goFile := os.Args[2]
 
-	f, err := os.Open(os.Args[3])
-	if err != nil {
-		panic(err)
-	}
-	inputFileScanner = initFileScanner(f)
-
+	inFilePath := os.Args[2]
 	if os.Args[1] == "flash" {
+		inFilePath = os.Args[3]
 		args := []string{
 			"flash",
 			"-target=arduino",
 			"-baudrate=9600",
 			"-gc=none",
-			goFile,
+			os.Args[2],
 		}
 		log.Printf("Running:\n\ttinygo %s\n", args)
 		cmd := exec.Command("tinygo", args...)
@@ -154,5 +151,10 @@ func main() {
 		}
 	}
 
+	f, err := os.Open(inFilePath)
+	if err != nil {
+		panic(err)
+	}
+	inputFileScanner = initFileScanner(f)
 	run()
 }

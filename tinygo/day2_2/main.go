@@ -5,7 +5,6 @@ package main
 import (
 	"github.com/SebastianZaha/go_misc/tinygo/driverutils"
 	"github.com/SebastianZaha/go_misc/tinygo/utils"
-	"tinygo.org/x/drivers/hd44780i2c"
 )
 
 type parseState byte
@@ -17,37 +16,18 @@ const (
 )
 
 var (
-	// serial comms
-	serialComm = &driverutils.SerialComm{}
+	lcd        driverutils.TwoIntsLcd
+	serialComm driverutils.SerialComm
 	serialBuf  = make([]byte, utils.SerialPacketSize)
 
-	// lcd and lcd utils
-	lcd    hd44780i2c.Device
-	intBuf = make([]byte, 8)
-
-	txtSum   = []byte("Sum: ")
-	txtTerms = []byte("of:  ")
-	txtDone  = []byte("ok")
-
-	// problem
-	sum       uint32
-	sumTerms  uint32
-	lastWrote uint32
-
+	sum                    uint32
 	parsing                parseState
 	currGame, currColorNum uint32
-
-	maxR, maxG, maxB uint32
+	maxR, maxG, maxB       uint32
 )
 
 func main() {
-	lcd = driverutils.InitLCD()
-
-	lcd.SetCursor(0, 0)
-	lcd.Print(txtSum)
-	lcd.SetCursor(0, 1)
-	lcd.Print(txtTerms)
-
+	lcd.Init(10)
 	driverutils.SerialByte(utils.AsciiACK) // ready for input
 
 	for {
@@ -56,16 +36,14 @@ func main() {
 			dbg("#", serialBuf[i])
 			if serialBuf[i] == utils.AsciiEOT {
 				// finished parsing the input
-
-				lcdPrint()
-				lcd.SetCursor(14, 1)
-				lcd.Print(txtDone)
+				lcd.OK(sum)
 				driverutils.SerialByte(utils.AsciiEOT)
 				return
 			} else if serialBuf[i] == utils.AsciiUS {
 				// new line in test input
 
-				add(maxR * maxG * maxB)
+				sum += maxR * maxG * maxB
+				lcd.Print(sum, true)
 
 				parsing = game
 				currGame = 0
@@ -124,25 +102,6 @@ func main() {
 func dbg(txt string, c byte) {
 	return
 	driverutils.SerialByte(utils.AsciiUS)
-	print(txt, " '", c, "' p ", parsing, " s ", sum, " sT ", sumTerms, " cG ", currGame, " cC ", currColorNum)
+	print(txt, " '", c, "' p ", parsing, " s ", sum, " cG ", currGame, " cC ", currColorNum)
 	driverutils.SerialByte(utils.AsciiUS)
-}
-
-func add(n uint32) {
-	sum += n
-	sumTerms++
-	if sumTerms < lastWrote+10 {
-		return
-	}
-	lastWrote = sumTerms
-	lcdPrint()
-}
-
-func lcdPrint() {
-	lcd.SetCursor(5, 0)
-	utils.FormatUint32(sum, intBuf)
-	lcd.Print(intBuf)
-	lcd.SetCursor(5, 1)
-	utils.FormatUint32(sumTerms, intBuf)
-	lcd.Print(intBuf)
 }
