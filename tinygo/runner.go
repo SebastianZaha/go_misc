@@ -1,5 +1,3 @@
-//go:build avr
-
 package main
 
 import (
@@ -7,6 +5,7 @@ import (
 	"fmt"
 	"github.com/SebastianZaha/go_misc/tinygo/utils"
 	"github.com/mattn/go-tty"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -54,6 +53,15 @@ func run() {
 func writeInputPacket() {
 	if inputFileScanner.Scan() {
 		packet := inputFileScanner.Bytes()
+		if len(packet) == 0 {
+			fmt.Printf("Input file scanner should not return empty tokens")
+			os.Exit(1)
+		}
+		n, err := serial.Output().Write([]byte{byte(len(packet))})
+		if n != 1 || err != nil {
+			fmt.Printf("Must be able to write 1 byte for the length of the packet. Wrote %d. Err: %v", n, err)
+			os.Exit(1)
+		}
 		nwritten, err := serial.Output().Write(packet)
 		utils.Must(err)
 		if nwritten != len(packet) {
@@ -70,10 +78,10 @@ func writeInputPacket() {
 	}
 
 	// if no token and no error we got to the end
-	nwritten, err := serial.Output().Write([]byte{utils.AsciiEOT})
+	nwritten, err := serial.Output().Write([]byte{1, utils.AsciiEOT})
 	utils.Must(err)
-	if nwritten != 1 {
-		fmt.Printf("Cannot write EOT byte, wrote %d bytes\n", nwritten)
+	if nwritten != 2 {
+		fmt.Printf("Cannot write EOT packet, wrote %d bytes\n", nwritten)
 		os.Exit(1)
 	}
 	fmt.Println("Wrote EOT to output")
@@ -84,7 +92,7 @@ func writeInputPacket() {
 // CR and LF are squished and replaced by a single utils.AsciiUS because
 // tty protocols mess with the CR/LF processing, seemingly adding or removing them
 // in ways I do not understand.
-func initFileScanner(f *os.File) *bufio.Scanner {
+func initFileScanner(f io.Reader) *bufio.Scanner {
 	scanner := bufio.NewScanner(f)
 	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		token = make([]byte, utils.SerialPacketSize)
@@ -110,8 +118,9 @@ func initFileScanner(f *os.File) *bufio.Scanner {
 				// There is one final token to be delivered, which may be the empty string.
 				// Returning bufio.ErrFinalToken here tells Scan there are no more tokens after this
 				// but does not trigger an error to be returned from Scan itself.
-				return 0, token, bufio.ErrFinalToken
+				return 0, token[:tokenIndex], bufio.ErrFinalToken
 			} else {
+				// read more
 				return 0, nil, nil
 			}
 		} else {
@@ -139,7 +148,8 @@ func main() {
 			"flash",
 			"-target=arduino",
 			"-baudrate=9600",
-			"-gc=none",
+			// "-gc=leaking",
+			// "-scheduler=tasks",
 			os.Args[2],
 		}
 		log.Printf("Running:\n\ttinygo %s\n", args)

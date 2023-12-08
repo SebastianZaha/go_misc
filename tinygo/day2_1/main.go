@@ -74,10 +74,8 @@ func main() {
 				if parsing == colorNum && currColorNum > 0 {
 					parsing = colorName
 				}
-			} else if serialBuf[i] == ';' {
 			} else if serialBuf[i] == ':' {
 				parsing = colorNum
-			} else if serialBuf[i] == ',' {
 			} else if parsing == colorName {
 				if serialBuf[i] == 'r' {
 					if currColorNum > maxR {

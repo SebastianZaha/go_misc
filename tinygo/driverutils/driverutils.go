@@ -5,16 +5,24 @@ package driverutils
 import (
 	"github.com/SebastianZaha/go_misc/tinygo/utils"
 	"machine"
+	"os"
 	"tinygo.org/x/drivers/hd44780i2c"
 )
+
+func Fatal(err error) {
+	if err != nil {
+		SerialByte(utils.AsciiUS)
+		println(err)
+		SerialByte(utils.AsciiUS)
+		os.Exit(1)
+	}
+}
 
 func InitLCD() (lcd hd44780i2c.Device) {
 	err := machine.I2C0.Configure(machine.I2CConfig{
 		Frequency: 400 * machine.KHz,
 	})
-	if err != nil {
-		panic(err)
-	}
+	Fatal(err)
 
 	lcd = hd44780i2c.New(machine.I2C0, 0x27) // some modules have address 0x3F
 	err = lcd.Configure(hd44780i2c.Config{
@@ -23,33 +31,43 @@ func InitLCD() (lcd hd44780i2c.Device) {
 		CursorOn:    false,
 		CursorBlink: false,
 	})
-	if err != nil {
-		panic(err)
-	}
+	Fatal(err)
 
 	return
 }
 
 func SerialByte(b byte) {
-	utils.Must(machine.Serial.WriteByte(b))
+	Fatal(machine.Serial.WriteByte(b))
 }
 
 type SerialComm struct {
-	readFromCurrFrame int
+	currPacketSize byte
+	readFromPacket byte
 }
 
 func (sc *SerialComm) Read(buf []byte) int {
-	n, err := machine.Serial.Read(buf)
-	utils.Must(err)
+	var err error
+	if sc.currPacketSize == 0 {
+		for {
+			sc.currPacketSize, err = machine.Serial.ReadByte()
+			if err == nil {
+				break
+			}
+		}
+	}
 
-	if sc.readFromCurrFrame+n < utils.SerialPacketSize {
-		sc.readFromCurrFrame += n
-	} else if sc.readFromCurrFrame+n == utils.SerialPacketSize {
+	n, err := machine.Serial.Read(buf)
+	Fatal(err)
+
+	if sc.readFromPacket+byte(n) < sc.currPacketSize {
+		sc.readFromPacket += byte(n)
+	} else if sc.readFromPacket+byte(n) == sc.currPacketSize {
 		SerialByte(utils.AsciiACK)
-		sc.readFromCurrFrame = 0
+		sc.readFromPacket = 0
+		sc.currPacketSize = 0
 	} else {
-		print(utils.AsciiUS, "tx error. in packet: ", sc.readFromCurrFrame+n, utils.AsciiUS)
-		panic("tx error")
+		print(utils.AsciiUS, "tx err", sc.readFromPacket+byte(n), utils.AsciiUS)
+		os.Exit(1)
 	}
 
 	return n
